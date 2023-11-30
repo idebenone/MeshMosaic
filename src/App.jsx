@@ -38,7 +38,7 @@ export default function App() {
         },
         camera_fov: {
           value: 35,
-          min: 30,
+          min: 0,
           max: 100,
         },
         orbit_control: true,
@@ -83,6 +83,16 @@ export default function App() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: canvas_color }}>
+      <p
+        style={{
+          position: "absolute",
+          bottom: "10px",
+          left: "10px",
+          color: "grey",
+        }}
+      >
+        Vineeth V G
+      </p>
       <Canvas
         pixelratio={window.devicePixelRatio}
         camera={{ fov: camera_fov, position: [0, 0, 20] }}

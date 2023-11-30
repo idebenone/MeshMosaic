@@ -1,6 +1,6 @@
 import { useFrame } from "@react-three/fiber";
-import { folder, useControls } from "leva";
-import { useRef, useEffect } from "react";
+import { button, folder, useControls } from "leva";
+import { useRef, useEffect, useState } from "react";
 
 const getAngles = (value, operation) => {
   switch (operation) {
@@ -10,10 +10,12 @@ const getAngles = (value, operation) => {
       return Math.cos(value);
     case "tan":
       return Math.tan(value);
-    case "sec":
-      return 1 / Math.cos(value);
-    case "cosec":
-      return 1 / Math.sin(value);
+    case "sinh":
+      return Math.sinh(value);
+    case "cosh":
+      return Math.cosh(value);
+    case "tanh":
+      return Math.tanh(value);
     default:
       return value;
   }
@@ -49,6 +51,9 @@ function generateUniformPointsInSphere(radius, numberOfPoints) {
 }
 
 export const Particles = () => {
+  const [x, setX] = useState(true);
+  const [y, setY] = useState(true);
+  const [z, setZ] = useState(true);
   const {
     quantity,
     position,
@@ -62,46 +67,55 @@ export const Particles = () => {
     z_angle,
     dispersion_offset,
     dispersion_rate,
-  } = useControls({
-    Particles: folder({
-      quantity: {
-        value: 100,
-        max: 1000,
-        min: 100,
-      },
-      position: { options: ["Random", "Uniform"] },
-      env_radius: 5,
-      Size: folder({
-        max_size: 0.05,
-        min_size: 0.001,
-      }),
-      Movement: folder({
-        enable: false,
-        range: {
-          max: 5,
-          min: -5,
+  } = useControls(
+    {
+      Particles: folder({
+        quantity: {
+          value: 500,
+          max: 1000,
+          min: 100,
         },
-        x_axis: folder({
-          x_angle: {
-            options: ["sin", "cos", "tan", "cot", "sec", "cosec"],
-          },
+        position: { options: ["Random", "Uniform"] },
+        env_radius: 5,
+        Size: folder({
+          max_size: 0.05,
+          min_size: 0.001,
         }),
-        y_axis: folder({
-          y_angle: {
-            options: ["sin", "cos", "tan", "cot", "sec", "cosec"],
+        Movement: folder({
+          enable: false,
+          range: {
+            max: 5,
+            min: -5,
           },
+          x_axis: folder({
+            x_angle: {
+              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+              disabled: x,
+            },
+            x_toggle: button(() => setX(!x)),
+          }),
+          y_axis: folder({
+            y_angle: {
+              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+              disabled: y,
+            },
+            y_toggle: button(() => setY(!y)),
+          }),
+          z_axis: folder({
+            z_angle: {
+              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+              disabled: z,
+            },
+            z_toggle: button(() => setZ(!z)),
+          }),
         }),
-        z_axis: folder({
-          z_angle: {
-            options: ["sin", "cos", "tan", "cot", "sec", "cosec"],
-          },
-        }),
-      }),
 
-      dispersion_offset: 0.25,
-      dispersion_rate: 0.01,
-    }),
-  });
+        dispersion_offset: 0.25,
+        dispersion_rate: 0.01,
+      }),
+    },
+    [x, y, z]
+  );
 
   const spheres = useRef();
   const randomPositions = useRef([]);
@@ -135,20 +149,27 @@ export const Particles = () => {
 
   useFrame(({ clock }) => {
     spheres.current.children.forEach((sphere, i) => {
+      const randomness = randomPos[i] * dispersion_offset;
       if (enable) {
-        const adjustmentX =
-          getAngles(clock.elapsedTime * randomPos[i], x_angle) *
-          dispersion_rate;
-        const adjustmentY =
-          getAngles(clock.elapsedTime * randomPos[i], y_angle) *
-          dispersion_rate;
-        const adjustmentZ =
-          getAngles(clock.elapsedTime * randomPos[i], z_angle) *
-          dispersion_rate;
+        if (!x) {
+          const adjustmentX =
+            getAngles(clock.elapsedTime * randomness, x_angle) *
+            dispersion_rate;
+          sphere.position.x += adjustmentX;
+        }
+        if (!y) {
+          const adjustmentY =
+            getAngles(clock.elapsedTime * randomness, y_angle) *
+            dispersion_rate;
+          sphere.position.y += adjustmentY;
+        }
 
-        sphere.position.x += adjustmentX;
-        sphere.position.y += adjustmentY;
-        sphere.position.z += adjustmentZ;
+        if (!z) {
+          const adjustmentZ =
+            getAngles(clock.elapsedTime * randomness, z_angle) *
+            dispersion_rate;
+          sphere.position.z += adjustmentZ;
+        }
       }
     });
   });
