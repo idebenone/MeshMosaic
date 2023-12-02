@@ -1,61 +1,26 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { Physics } from "@react-three/rapier";
 import { folder, useControls } from "leva";
-import { RubiksEngine } from "./DataModels/Rubiks";
-import { Particles } from "./DataModels/Particles";
+import { RubiksEngine } from "./Designs/Rubiks";
+import { Particles } from "./Designs/Particles";
+import { Plane } from "./Designs/Plane";
 
 export default function App() {
-  const lightProperties = [
-    {
-      position: { x: 5, y: 10, z: 1 },
-      color: "red",
-      intensity: 4,
-    },
-    {
-      position: { x: -5, y: 10, z: 1 },
-      color: "blue",
-      intensity: 4,
-    },
-    {
-      position: { x: 5, y: 10, z: 10 },
-      color: "green",
-      intensity: 4,
-    },
-    {
-      position: { x: -5, y: -10, z: -20 },
-      color: "orange",
-      intensity: 4,
-    },
-  ];
-
-  const { model, camera_fov, orbit_control, canvas_color, ...lights } =
-    useControls({
-      Canvas: folder({
-        model: {
-          options: ["Particles", "Rubik's"],
-        },
-        camera_fov: {
-          value: 35,
-          min: 0,
-          max: 100,
-        },
-        orbit_control: true,
-        canvas_color: "#101010",
-        Lights: folder(
-          lightProperties.reduce((acc, _, index) => {
-            acc[index + 1] = folder({
-              [`position_${index + 1}`]: lightProperties[index].position,
-              [`color_${index + 1}`]: lightProperties[index].color,
-              [`intensity_${index + 1}`]: 4,
-            });
-            return acc;
-          }, {}),
-          { collapsed: true }
-        ),
-      }),
-    });
+  const { model, camera_fov, orbit_control, canvas_color } = useControls({
+    Canvas: folder({
+      model: {
+        options: ["Particles", "Rubik", "Plane"],
+      },
+      camera_fov: {
+        value: 35,
+        min: 0,
+        max: 100,
+      },
+      orbit_control: true,
+      canvas_color: "#101010",
+    }),
+  });
 
   const cameraRef = useRef();
 
@@ -65,21 +30,6 @@ export default function App() {
       cameraRef.current.updateProjectionMatrix();
     }
   }, [camera_fov]);
-
-  const renderDirectionalLights = () => {
-    return lightProperties.map((light, index) => (
-      <directionalLight
-        key={`light_${index}`}
-        intensity={lights[`intensity_${index + 1}`]}
-        position={[
-          lights[`position_${index + 1}`].x,
-          lights[`position_${index + 1}`].y,
-          lights[`position_${index + 1}`].z,
-        ]}
-        color={lights[`color_${index + 1}`]}
-      />
-    ));
-  };
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: canvas_color }}>
@@ -103,10 +53,10 @@ export default function App() {
           cameraRef.current = camera;
         }}
       >
-        {orbit_control && <OrbitControls />}
-        {renderDirectionalLights()}
+        {orbit_control && <OrbitControls enablePan="true" />}
         {model === "Particles" && <Particles />}
-        {model === "Rubik's" && <RubiksEngine />}
+        {model === "Rubik" && <RubiksEngine />}
+        {model === "Plane" && <Plane />}
       </Canvas>
     </div>
   );

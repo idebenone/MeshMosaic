@@ -1,63 +1,52 @@
 import { useFrame } from "@react-three/fiber";
-import { button, folder, useControls } from "leva";
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getTrignometryAngles } from "../Utility/getTrignometryAngles";
+import { useControls, folder, button } from "leva";
 
-const getAngles = (value, operation) => {
-  switch (operation) {
-    case "sin":
-      return Math.sin(value);
-    case "cos":
-      return Math.cos(value);
-    case "tan":
-      return Math.tan(value);
-    case "sinh":
-      return Math.sinh(value);
-    case "cosh":
-      return Math.cosh(value);
-    case "tanh":
-      return Math.tanh(value);
-    default:
-      return value;
+function generateUniformPointsInCircle(radius, numberOfPoints, numberOfLevels) {
+  const points = [];
+  const particlesPerLevel = numberOfPoints / numberOfLevels;
+  for (let level = 0; level < numberOfLevels; level++) {
+    const levelRadius = (level + 1) * (radius / numberOfLevels);
+    for (let i = 0; i < particlesPerLevel; i++) {
+      const theta = (i / particlesPerLevel) * Math.PI * 2;
+      const x = levelRadius * Math.cos(theta);
+      const y = levelRadius * Math.sin(theta);
+      points.push([x, y]);
+    }
   }
-};
-
-function generateRandomPointInSphere(radius) {
-  const u = Math.random();
-  const v = Math.random();
-  const theta = 2 * Math.PI * u;
-  const phi = Math.acos(2 * v - 1);
-  // const r = radius * Math.cbrt(Math.random());
-  const r = radius;
-  const x = r * Math.sin(phi) * Math.cos(theta);
-  const y = r * Math.sin(phi) * Math.sin(theta);
-  const z = r * Math.cos(phi);
-  return { x, y, z };
+  return points;
 }
 
-function generateUniformPointsInSphere(radius, numberOfPoints) {
+function generateRandomPointsInCircle(radius, numberOfPoints) {
   const points = [];
   const goldenRatio = (1 + Math.sqrt(5)) / 2;
   for (let i = 0; i < numberOfPoints; i++) {
     const theta = 2 * Math.PI * (i / goldenRatio);
     const phi = Math.acos(1 - (2 * (i + 0.5)) / numberOfPoints);
-    // const r = radius * Math.cbrt(Math.random());
-    const r = radius;
+    const r = Math.cbrt(Math.random()) * radius;
     const x = r * Math.sin(phi) * Math.cos(theta);
     const y = r * Math.sin(phi) * Math.sin(theta);
-    const z = r * Math.cos(phi);
-    points.push([x, y, z]);
+    points.push([x, y]);
   }
   return points;
 }
 
-export const Particles = () => {
+export const Plane = () => {
+  const [stateUniform, setStateUniform] = useState("Levels");
+  const spheres = useRef();
+
+  const uniform = useRef([]);
+  const random = useRef([]);
+
   const [x, setX] = useState(true);
   const [y, setY] = useState(true);
   const [z, setZ] = useState(true);
+
   const {
     quantity,
-    position,
-    env_radius,
+    type,
+    level,
     max_size,
     min_size,
     enable,
@@ -69,17 +58,20 @@ export const Particles = () => {
     dispersion_rate,
   } = useControls(
     {
-      Particles: folder({
+      Plane_Particles: folder({
         quantity: {
           value: 500,
           max: 1000,
           min: 100,
         },
-        position: { options: ["Random", "Uniform"] },
-        env_radius: 5,
-        Size: folder({
+        type: {
+          options: ["Levels", "Randomized"],
+          onChange: (e) => setStateUniform(e),
+        },
+        level: { value: 10, disabled: stateUniform != "Levels" },
+        Plane_Size: folder({
           max_size: 0.05,
-          min_size: 0.001,
+          min_size: 0.05,
         }),
         Movement: folder({
           enable: false,
@@ -108,38 +100,13 @@ export const Particles = () => {
             },
             z_toggle: button(() => setZ(!z)),
           }),
+          dispersion_offset: 0.25,
+          dispersion_rate: 0.01,
         }),
-
-        dispersion_offset: 0.25,
-        dispersion_rate: 0.01,
       }),
     },
-    [x, y, z]
+    [x, y, z, stateUniform]
   );
-
-  const spheres = useRef();
-  const randomPositions = useRef([]);
-  const uniformPositions = useRef([]);
-
-  if (
-    position === "Random" &&
-    (!randomPositions.current.length ||
-      quantity !== randomPositions.current.length)
-  ) {
-    randomPositions.current = [...Array(quantity)].map(() =>
-      generateRandomPointInSphere(env_radius)
-    );
-  }
-
-  useEffect(() => {
-    randomPositions.current = [...Array(quantity)].map(() =>
-      generateRandomPointInSphere(env_radius)
-    );
-    uniformPositions.current = generateUniformPointsInSphere(
-      env_radius,
-      quantity
-    );
-  }, [quantity, env_radius, x_angle, y_angle, z_angle, range]);
 
   const randomPos = [];
   for (let i = 0; i < quantity; i++) {
@@ -153,20 +120,20 @@ export const Particles = () => {
       if (enable) {
         if (!x) {
           const adjustmentX =
-            getAngles(clock.elapsedTime * randomness, x_angle) *
+            getTrignometryAngles(clock.elapsedTime * randomness, x_angle) *
             dispersion_rate;
           sphere.position.x += adjustmentX;
         }
         if (!y) {
           const adjustmentY =
-            getAngles(clock.elapsedTime * randomness, y_angle) *
+            getTrignometryAngles(clock.elapsedTime * randomness, y_angle) *
             dispersion_rate;
           sphere.position.y += adjustmentY;
         }
 
         if (!z) {
           const adjustmentZ =
-            getAngles(clock.elapsedTime * randomness, z_angle) *
+            getTrignometryAngles(clock.elapsedTime * randomness, z_angle) *
             dispersion_rate;
           sphere.position.z += adjustmentZ;
         }
@@ -174,36 +141,50 @@ export const Particles = () => {
     });
   });
 
-  const particleComponents =
-    position === "Random"
-      ? randomPositions.current.map((point, i) => {
-          const { x, y, z } = point;
+  uniform.current = generateUniformPointsInCircle(5, quantity, level);
+  useEffect(() => {
+    uniform.current = [];
+    uniform.current = generateUniformPointsInCircle(5, quantity, level);
+    random.current = [];
+    random.current = generateRandomPointsInCircle(5, quantity);
+  }, [quantity, enable, x_angle, y_angle, z_angle, range, stateUniform]);
+
+  const renderParticles =
+    stateUniform === "Levels"
+      ? uniform.current.map((val, i) => {
+          const [x, y] = val;
           const sphereSize = (
             Math.random() * (max_size - min_size) +
             min_size
           ).toFixed(3);
-
           return (
-            <mesh key={i} position={[x, y, z]}>
-              <sphereGeometry args={[sphereSize, 100, 8]} />
+            <mesh key={i} position={[x, y, 0]}>
+              <sphereGeometry args={[sphereSize, 100, 30]} />
               <meshStandardMaterial color="#b3b3b3" />
             </mesh>
           );
         })
-      : uniformPositions.current.map((point, i) => {
-          const [x, y, z] = point;
+      : random.current.map((val, i) => {
+          const [x, y] = val;
           const sphereSize = (
             Math.random() * (max_size - min_size) +
             min_size
           ).toFixed(3);
-
           return (
-            <mesh key={i} position={[x, y, z]}>
-              <sphereGeometry args={[sphereSize, 100, 8]} />
+            <mesh key={i} position={[x, y, 0]}>
+              <sphereGeometry args={[sphereSize, 100, 30]} />
               <meshStandardMaterial color="#b3b3b3" />
             </mesh>
           );
         });
 
-  return <group ref={spheres}>{particleComponents}</group>;
+  return (
+    <>
+      <group ref={spheres}>
+        <directionalLight position={[0, 10, 0]} />
+        <directionalLight position={[0, -10, 0]} color={"yellow"} />
+        {renderParticles}
+      </group>
+    </>
+  );
 };

@@ -43,6 +43,29 @@ const createCube = (geometry, material, position) => {
 };
 
 export const RubiksEngine = () => {
+  const lightProperties = [
+    {
+      position: { x: 5, y: 10, z: 1 },
+      color: "red",
+      intensity: 4,
+    },
+    {
+      position: { x: -5, y: 10, z: 1 },
+      color: "blue",
+      intensity: 4,
+    },
+    {
+      position: { x: 5, y: 10, z: 10 },
+      color: "green",
+      intensity: 4,
+    },
+    {
+      position: { x: -5, y: -10, z: -20 },
+      color: "orange",
+      intensity: 4,
+    },
+  ];
+
   const {
     rotation,
     rotation_axis,
@@ -51,7 +74,19 @@ export const RubiksEngine = () => {
     scale_constant,
     scale_rate,
     scale_offset,
+    ...lights
   } = useControls({
+    Lights: folder(
+      lightProperties.reduce((acc, _, index) => {
+        acc[index + 1] = folder({
+          [`position_${index + 1}`]: lightProperties[index].position,
+          [`color_${index + 1}`]: lightProperties[index].color,
+          [`intensity_${index + 1}`]: 4,
+        });
+        return acc;
+      }, {}),
+      { collapsed: true }
+    ),
     Rubiks: folder({
       rotation: false,
       rotation_axis: AXIS,
@@ -118,9 +153,25 @@ export const RubiksEngine = () => {
     }
   });
 
+  const renderDirectionalLights = () => {
+    return lightProperties.map((light, index) => (
+      <directionalLight
+        key={`light_${index}`}
+        intensity={lights[`intensity_${index + 1}`]}
+        position={[
+          lights[`position_${index + 1}`].x,
+          lights[`position_${index + 1}`].y,
+          lights[`position_${index + 1}`].z,
+        ]}
+        color={lights[`color_${index + 1}`]}
+      />
+    ));
+  };
+
   return (
     <>
       <group ref={cubes}>
+        {renderDirectionalLights()}
         {positions.map((position, i) =>
           createCube(boxGeometry, standardMaterial, position)
         )}
