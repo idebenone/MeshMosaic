@@ -32,10 +32,9 @@ function generateRandomPointsInCircle(radius, numberOfPoints) {
   return points;
 }
 
-export const Plane = () => {
+export const CircleParticles = () => {
   const [stateUniform, setStateUniform] = useState("Levels");
   const spheres = useRef();
-
   const uniform = useRef([]);
   const random = useRef([]);
 
@@ -43,69 +42,76 @@ export const Plane = () => {
   const [y, setY] = useState(true);
   const [z, setZ] = useState(true);
 
+  const { quantity, level, max_size, min_size } = useControls(
+    "Particles_Plane",
+    {
+      quantity: {
+        value: 500,
+        max: 1000,
+        min: 100,
+      },
+      type: {
+        options: ["Levels", "Randomized"],
+        onChange: (e) => setStateUniform(e),
+      },
+      level: { value: 10, disabled: stateUniform != "Levels" },
+      Size_Plane: folder({
+        max_size: 0.01,
+        min_size: 0.01,
+      }),
+    },
+    { color: "green" },
+    [stateUniform]
+  );
+
   const {
-    quantity,
-    type,
-    level,
-    max_size,
-    min_size,
     enable,
     range,
     x_angle,
+    x_inside,
     y_angle,
+    y_inside,
     z_angle,
-    dispersion_offset,
-    dispersion_rate,
+    z_inside,
+    randomness_offset,
+    movement_rate,
   } = useControls(
+    "Movement_Plane",
     {
-      Plane_Particles: folder({
-        quantity: {
-          value: 500,
-          max: 1000,
-          min: 100,
+      enable: false,
+      range: {
+        max: 5,
+        min: -5,
+      },
+      x_axis: folder({
+        x_angle: {
+          options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+          disabled: x,
         },
-        type: {
-          options: ["Levels", "Randomized"],
-          onChange: (e) => setStateUniform(e),
-        },
-        level: { value: 10, disabled: stateUniform != "Levels" },
-        Plane_Size: folder({
-          max_size: 0.05,
-          min_size: 0.05,
-        }),
-        Movement: folder({
-          enable: false,
-          range: {
-            max: 5,
-            min: -5,
-          },
-          x_axis: folder({
-            x_angle: {
-              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
-              disabled: x,
-            },
-            x_toggle: button(() => setX(!x)),
-          }),
-          y_axis: folder({
-            y_angle: {
-              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
-              disabled: y,
-            },
-            y_toggle: button(() => setY(!y)),
-          }),
-          z_axis: folder({
-            z_angle: {
-              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
-              disabled: z,
-            },
-            z_toggle: button(() => setZ(!z)),
-          }),
-          dispersion_offset: 0.25,
-          dispersion_rate: 0.01,
-        }),
+        x_inside: false,
+        x_toggle: button(() => setX(!x)),
       }),
+      y_axis: folder({
+        y_angle: {
+          options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+          disabled: y,
+        },
+        y_inside: false,
+        y_toggle: button(() => setY(!y)),
+      }),
+      z_axis: folder({
+        z_angle: {
+          options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+          disabled: z,
+        },
+        z_inside: false,
+        z_toggle: button(() => setZ(!z)),
+      }),
+      randomness_offset: 0.25,
+      movement_rate: 0.01,
     },
-    [x, y, z, stateUniform]
+    { collapsed: false, color: "orange" },
+    [x, y, z]
   );
 
   const randomPos = [];
@@ -116,26 +122,51 @@ export const Plane = () => {
 
   useFrame(({ clock }) => {
     spheres.current.children.forEach((sphere, i) => {
-      const randomness = randomPos[i] * dispersion_offset;
+      const randomness = randomPos[i] * randomness_offset;
+
       if (enable) {
         if (!x) {
-          const adjustmentX =
-            getTrignometryAngles(clock.elapsedTime * randomness, x_angle) *
-            dispersion_rate;
-          sphere.position.x += adjustmentX;
+          if (x_inside) {
+            const adjustmentX =
+              getTrignometryAngles(clock.elapsedTime * randomness, x_angle) *
+              movement_rate;
+            sphere.position.x += adjustmentX;
+          } else {
+            const adjustmentX =
+              getTrignometryAngles(clock.elapsedTime, x_angle) *
+              randomness *
+              movement_rate;
+            sphere.position.x += adjustmentX;
+          }
         }
         if (!y) {
-          const adjustmentY =
-            getTrignometryAngles(clock.elapsedTime * randomness, y_angle) *
-            dispersion_rate;
-          sphere.position.y += adjustmentY;
+          if (y_inside) {
+            const adjustmentY =
+              getTrignometryAngles(clock.elapsedTime * randomness, y_angle) *
+              movement_rate;
+            sphere.position.y += adjustmentY;
+          } else {
+            const adjustmentY =
+              getTrignometryAngles(clock.elapsedTime, y_angle) *
+              randomness *
+              movement_rate;
+            sphere.position.y += adjustmentY;
+          }
         }
 
         if (!z) {
-          const adjustmentZ =
-            getTrignometryAngles(clock.elapsedTime * randomness, z_angle) *
-            dispersion_rate;
-          sphere.position.z += adjustmentZ;
+          if (z_inside) {
+            const adjustmentZ =
+              getTrignometryAngles(clock.elapsedTime * randomness, z_angle) *
+              movement_rate;
+            sphere.position.z += adjustmentZ;
+          } else {
+            const adjustmentZ =
+              getTrignometryAngles(clock.elapsedTime, z_angle) *
+              randomness *
+              movement_rate;
+            sphere.position.z += adjustmentZ;
+          }
         }
       }
     });
@@ -147,7 +178,18 @@ export const Plane = () => {
     uniform.current = generateUniformPointsInCircle(5, quantity, level);
     random.current = [];
     random.current = generateRandomPointsInCircle(5, quantity);
-  }, [quantity, enable, x_angle, y_angle, z_angle, range, stateUniform]);
+  }, [
+    quantity,
+    enable,
+    x_angle,
+    x_inside,
+    y_angle,
+    y_inside,
+    z_angle,
+    z_inside,
+    range,
+    stateUniform,
+  ]);
 
   const renderParticles =
     stateUniform === "Levels"
@@ -181,8 +223,7 @@ export const Plane = () => {
   return (
     <>
       <group ref={spheres}>
-        <directionalLight position={[0, 10, 0]} />
-        <directionalLight position={[0, -10, 0]} color={"yellow"} />
+        <ambientLight />
         {renderParticles}
       </group>
     </>

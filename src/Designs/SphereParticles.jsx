@@ -4,45 +4,76 @@ import { useRef, useEffect, useState } from "react";
 import { getTrignometryAngles } from "../Utility/getTrignometryAngles";
 import { generatePoints } from "../Utility/generatePoints";
 
-export const Particles = () => {
+const lightProperties = [
+  {
+    position: { x: 5, y: 10, z: 1 },
+    color: "red",
+    intensity: 4,
+  },
+  {
+    position: { x: -5, y: 10, z: 1 },
+    color: "blue",
+    intensity: 4,
+  },
+  {
+    position: { x: 5, y: 10, z: 10 },
+    color: "green",
+    intensity: 4,
+  },
+  {
+    position: { x: -5, y: -10, z: -20 },
+    color: "orange",
+    intensity: 4,
+  },
+];
+
+export const SphereParticles = () => {
   const spheres = useRef();
   const randomPositions = useRef([]);
   const uniformPositions = useRef([]);
 
+  const [ratioState, setRatioState] = useState("Random");
   const [x, setX] = useState(true);
   const [y, setY] = useState(true);
   const [z, setZ] = useState(true);
 
-  const lightProperties = [
+  const { ...lights } = useControls(
+    "Lights",
+    lightProperties.reduce((acc, _, index) => {
+      acc[index + 1] = folder({
+        [`position_${index + 1}`]: lightProperties[index].position,
+        [`color_${index + 1}`]: lightProperties[index].color,
+        [`intensity_${index + 1}`]: 4,
+      });
+      return acc;
+    }, {}),
+    { collapsed: true, color: "pink" }
+  );
+
+  const { quantity, ratio, env_radius, max_size, min_size } = useControls(
+    "Particles",
     {
-      position: { x: 5, y: 10, z: 1 },
-      color: "red",
-      intensity: 4,
+      quantity: {
+        value: 500,
+        max: 1000,
+        min: 100,
+      },
+      position: {
+        options: ["Random", "Uniform"],
+        onChange: (e) => setRatioState(e),
+      },
+      ratio: { value: 5, disabled: ratioState !== "Uniform" },
+      env_radius: 5,
+      Size: folder({
+        max_size: 0.1,
+        min_size: 0.01,
+      }),
     },
-    {
-      position: { x: -5, y: 10, z: 1 },
-      color: "blue",
-      intensity: 4,
-    },
-    {
-      position: { x: 5, y: 10, z: 10 },
-      color: "green",
-      intensity: 4,
-    },
-    {
-      position: { x: -5, y: -10, z: -20 },
-      color: "orange",
-      intensity: 4,
-    },
-  ];
+    { collapsed: false, color: "green" },
+    [ratioState]
+  );
 
   const {
-    quantity,
-    position,
-    ratio,
-    env_radius,
-    max_size,
-    min_size,
     enable,
     range,
     x_angle,
@@ -53,86 +84,54 @@ export const Particles = () => {
     z_inside,
     randomness_offset,
     movement_rate,
-    ...lights
   } = useControls(
+    "Movement",
     {
-      Lights: folder(
-        lightProperties.reduce((acc, _, index) => {
-          acc[index + 1] = folder({
-            [`position_${index + 1}`]: lightProperties[index].position,
-            [`color_${index + 1}`]: lightProperties[index].color,
-            [`intensity_${index + 1}`]: 4,
-          });
-          return acc;
-        }, {}),
-        { collapsed: true }
-      ),
-      Particles: folder({
-        quantity: {
-          value: 500,
-          max: 1000,
-          min: 100,
+      enable: false,
+      range: {
+        max: 5,
+        min: -5,
+      },
+      x_axis: folder({
+        x_angle: {
+          options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+          disabled: x,
         },
-        position: { options: ["Random", "Uniform"] },
-        ratio: 5,
-        env_radius: 5,
-        Size: folder({
-          max_size: 0.1,
-          min_size: 0.1,
-        }),
-        Movement: folder({
-          enable: false,
-          range: {
-            max: 5,
-            min: -5,
-          },
-          x_axis: folder({
-            x_angle: {
-              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
-              disabled: x,
-            },
-            x_inside: false,
-            x_toggle: button(() => setX(!x)),
-          }),
-          y_axis: folder({
-            y_angle: {
-              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
-              disabled: y,
-            },
-            y_inside: false,
-            y_toggle: button(() => setY(!y)),
-          }),
-          z_axis: folder({
-            z_angle: {
-              options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
-              disabled: z,
-            },
-            z_inside: false,
-            z_toggle: button(() => setZ(!z)),
-          }),
-        }),
-
-        randomness_offset: 0.5,
-        movement_rate: 0.1,
+        x_inside: false,
+        x_toggle: button(() => setX(!x)),
       }),
+      y_axis: folder({
+        y_angle: {
+          options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+          disabled: y,
+        },
+        y_inside: false,
+        y_toggle: button(() => setY(!y)),
+      }),
+      z_axis: folder({
+        z_angle: {
+          options: ["sin", "cos", "tan", "sinh", "cosh", "tanh"],
+          disabled: z,
+        },
+        z_inside: false,
+        z_toggle: button(() => setZ(!z)),
+      }),
+      randomness_offset: 0.5,
+      movement_rate: 0.1,
     },
+    { collapsed: false, color: "orange" },
     [x, y, z]
   );
 
-  if (
-    position === "Random" &&
-    (!randomPositions.current.length ||
-      quantity !== randomPositions.current.length)
-  ) {
-    randomPositions.current = [...Array(quantity)].map(() =>
-      generatePoints.generateRandomPointInSphere(env_radius)
-    );
-    uniformPositions.current = generatePoints.generateUniformPointsInSphere(
-      env_radius,
-      quantity,
-      ratio
-    );
-  }
+  randomPositions.current = [...Array(quantity)].map(() =>
+    generatePoints.generateRandomPointInSphere(env_radius)
+  );
+
+  uniformPositions.current = generatePoints.generateUniformPointsInSphere(
+    env_radius,
+    quantity,
+    ratio
+  );
 
   useEffect(() => {
     randomPositions.current = [...Array(quantity)].map(() =>
@@ -153,7 +152,7 @@ export const Particles = () => {
     z_angle,
     z_inside,
     range,
-    position,
+    ratioState,
     ratio,
   ]);
 
@@ -231,7 +230,7 @@ export const Particles = () => {
   };
 
   const renderParticles =
-    position === "Random"
+    ratioState === "Random"
       ? randomPositions.current.map((point, i) => {
           const { x, y, z } = point;
           const sphereSize = (

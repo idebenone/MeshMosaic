@@ -3,14 +3,14 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { folder, useControls } from "leva";
 import { RubiksEngine } from "./Designs/Rubiks";
-import { Particles } from "./Designs/Particles";
-import { Plane } from "./Designs/Plane";
+import { SphereParticles } from "./Designs/SphereParticles";
+import { CircleParticles } from "./Designs/CircleParticles";
 
 export default function App() {
   const { model, camera_fov, orbit_control, canvas_color } = useControls({
     Canvas: folder({
       model: {
-        options: ["Particles", "Rubik", "Plane"],
+        options: ["SphereParticles", "CircleParticles", "Rubik"],
       },
       camera_fov: {
         value: 35,
@@ -54,9 +54,9 @@ export default function App() {
         }}
       >
         {orbit_control && <OrbitControls enablePan="true" />}
-        {model === "Particles" && <Particles />}
+        {model === "SphereParticles" && <SphereParticles />}
         {model === "Rubik" && <RubiksEngine />}
-        {model === "Plane" && <Plane />}
+        {model === "CircleParticles" && <CircleParticles />}
       </Canvas>
     </div>
   );
